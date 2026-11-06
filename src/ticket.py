@@ -7,7 +7,10 @@ class Ticket:
         risk,
         sla_remaining,
         status,
-        engineer="Unassigned"
+        engineer="Unassigned",
+        latitude=None,
+        longitude=None,
+        reporter_email=None,
     ):
         self.id = id
         self.issue = issue
@@ -15,6 +18,11 @@ class Ticket:
         self.sla_remaining = sla_remaining
         self.status = status
         self.engineer = engineer
+        self.latitude = latitude
+        self.longitude = longitude
+        # Kept optional so existing tickets and backup-era callers remain valid.
+        # New employee-created tickets receive the authenticated reporter email.
+        self.reporter_email = reporter_email
 
     def update_status(self, status):
         self.status = status

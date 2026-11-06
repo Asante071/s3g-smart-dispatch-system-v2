@@ -9,6 +9,7 @@
     <title>S³G Smart Dispatch System</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="role-style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -16,16 +17,143 @@
 
 <body>
 
+    <main id="loginView" class="s3g-login-shell">
+        <section class="s3g-login-card" aria-labelledby="loginTitle">
+            <div class="s3g-logo" aria-hidden="true">S³G</div>
+            <p class="s3g-eyebrow">SMART DISPATCH SYSTEM</p>
+            <h1 id="loginTitle">Company sign in</h1>
+            <p class="s3g-muted">Use a simulated company account to open the correct operational portal.</p>
+            <form id="companyLoginForm" class="s3g-stack-form">
+                <label>Email<input id="companyEmail" type="email" autocomplete="username" required></label>
+                <label>Password<input id="companyPassword" type="password" autocomplete="current-password" required></label>
+                <button class="s3g-primary-button" type="submit">Sign in</button>
+            </form>
+            <p id="loginError" class="s3g-message" role="alert" aria-live="polite"></p>
+            <details class="s3g-demo">
+                <summary>Demo company accounts</summary>
+                <p>All demo accounts use <code>DispatchDemo!2026</code>.</p>
+                <div class="s3g-account-grid">
+                    <button class="s3g-account-choice" type="button" data-email="employee@s3g.local">Employee</button>
+                    <button class="s3g-account-choice" type="button" data-email="sarah@s3g.local">Technician</button>
+                    <button class="s3g-account-choice" type="button" data-email="supervisor@s3g.local">Supervisor</button>
+                </div>
+            </details>
+        </section>
+    </main>
+
+    <div id="roleAppView" class="s3g-app-shell" hidden>
+        <aside class="s3g-sidebar">
+            <div><div class="s3g-logo small" aria-hidden="true">S³G</div><p class="s3g-eyebrow">SMART DISPATCH SYSTEM</p></div>
+            <nav aria-label="Portal navigation">
+                <a id="portalNav" class="s3g-nav-item active" href="#portal">My portal</a>
+                <a id="operationsNav" class="s3g-nav-item" href="#operations" hidden>Dispatch oversight</a>
+            </nav>
+            <div class="s3g-account-panel">
+                <span id="roleBadge" class="s3g-role-badge"></span>
+                <strong id="signedInName"></strong>
+                <span id="signedInEmail" class="s3g-muted small-text"></span>
+                <button id="logoutButton" class="s3g-text-button" type="button">Sign out</button>
+            </div>
+        </aside>
+        <main class="s3g-main-content">
+            <header class="s3g-page-header">
+                <div><p id="pageEyebrow" class="s3g-eyebrow"></p><h1 id="pageTitle">Dispatch portal</h1><p id="pageSubtitle" class="s3g-muted"></p></div>
+                <div id="apiStatus" class="s3g-connection">Connecting…</div>
+            </header>
+            <p id="appMessage" class="s3g-message" role="status" aria-live="polite"></p>
+
+            <section id="employeePortal" class="s3g-role-view" hidden>
+                <div class="s3g-section-heading"><div><h2>Report an incident</h2><p class="s3g-muted">Your incident is visible only to you and the dispatch team.</p></div></div>
+                <form id="incidentForm" class="s3g-panel s3g-form-row">
+                    <label>Incident title<input name="title" maxlength="255" placeholder="e.g. Cannot connect to VPN" required></label>
+                    <label>Priority<select name="priority"><option value="LOW">Low</option><option value="AMBER">Moderate</option><option value="HIGH">High</option></select></label>
+                    <button class="s3g-primary-button" type="submit">Submit incident</button>
+                </form>
+                <section class="s3g-panel s3g-table-panel">
+                    <div class="s3g-section-heading"><h2>My incidents</h2><button class="s3g-secondary-button s3g-refresh-button" type="button">Refresh</button></div>
+                    <div class="s3g-table-scroll"><table class="s3g-table"><thead><tr><th>ID</th><th>Incident</th><th>Priority</th><th>Status</th><th>Latest update</th></tr></thead><tbody id="employeeTickets"></tbody></table></div>
+                    <p id="employeeEmpty" class="s3g-empty" hidden>No incidents reported yet.</p>
+                </section>
+            </section>
+
+            <section id="technicianPortal" class="s3g-role-view" hidden>
+                <div id="technicianMetrics" class="s3g-metric-grid"></div>
+                <section class="s3g-panel s3g-table-panel">
+                    <div class="s3g-section-heading"><div><h2>Assigned incidents</h2><p class="s3g-muted">Only incidents assigned to you appear here.</p></div><button class="s3g-secondary-button s3g-refresh-button" type="button">Refresh</button></div>
+                    <div class="s3g-table-scroll"><table class="s3g-table"><thead><tr><th>ID</th><th>Incident</th><th>Priority</th><th>SLA remaining</th><th>Status</th><th>Update</th></tr></thead><tbody id="technicianTickets"></tbody></table></div>
+                    <p id="technicianEmpty" class="s3g-empty" hidden>No incidents are currently assigned to you.</p>
+                </section>
+                <section class="s3g-panel">
+                    <div class="s3g-section-heading"><div><h2>SLA prediction</h2><p class="s3g-muted">Estimate breach risk before progressing an assigned incident.</p></div><span class="s3g-model-label">Synthetic-data model</span></div>
+                    <form id="slaPredictionForm" class="s3g-prediction-form">
+                        <label>Assigned incident<select id="predictionTicket" name="ticket_id" required></select></label>
+                        <label>Priority<select name="priority"><option value="LOW">Low</option><option value="AMBER">Moderate</option><option value="HIGH" selected>High</option></select></label>
+                        <label>Category<input name="category" value="Network" required></label>
+                        <label>Complexity (1–10)<input name="complexity" type="number" min="1" max="10" value="5" required></label>
+                        <label>Experience (years)<input name="engineer_experience" type="number" min="0" value="2" required></label>
+                        <label>Current workload<input name="engineer_workload" type="number" min="0" value="0" required></label>
+                        <label>Previous incidents<input name="previous_incidents" type="number" min="0" value="0" required></label>
+                        <label>SLA allowed hours<input name="sla_allowed_hours" type="number" min="1" value="8" required></label>
+                        <label>Incident age hours<input name="incident_age_hours" type="number" min="0" value="1" required></label>
+                        <label>SLA remaining hours<input name="sla_remaining_hours" type="number" min="0" value="7" required></label>
+                        <button class="s3g-primary-button" type="submit">Predict risk</button>
+                    </form>
+                    <div id="predictionResult" class="s3g-prediction-result" hidden></div>
+                </section>
+            </section>
+
+            <section id="supervisorPortal" class="s3g-role-view" hidden>
+                <div id="supervisorMetrics" class="s3g-metric-grid"></div>
+                <section class="s3g-chart-grid" aria-label="Operational charts">
+                    <article class="s3g-panel s3g-chart-panel"><h2>Ticket priority</h2><canvas id="priorityChart"></canvas></article>
+                    <article class="s3g-panel s3g-chart-panel"><h2>Ticket status</h2><canvas id="statusChart"></canvas></article>
+                    <article class="s3g-panel s3g-chart-panel"><h2>SLA risk</h2><canvas id="slaRiskChart"></canvas></article>
+                    <article class="s3g-panel s3g-chart-panel"><h2>Engineer workload</h2><canvas id="workloadChart"></canvas></article>
+                </section>
+                <section class="s3g-panel s3g-table-panel">
+                    <div class="s3g-section-heading"><div><h2>All incidents</h2><p class="s3g-muted">Company-wide incident and dispatch overview.</p></div><button class="s3g-secondary-button s3g-refresh-button" type="button">Refresh</button></div>
+                    <div class="s3g-table-scroll"><table class="s3g-table"><thead><tr><th>ID</th><th>Incident</th><th>Priority</th><th>Status</th><th>Assigned to</th><th>SLA remaining</th><th>Dispatch</th></tr></thead><tbody id="supervisorTickets"></tbody></table></div>
+                    <p id="supervisorEmpty" class="s3g-empty" hidden>No incidents are currently stored.</p>
+                </section>
+                <section id="operations" class="s3g-two-column">
+                    <div class="s3g-stack-sections">
+                        <section class="s3g-panel">
+                            <div class="s3g-section-heading"><div><h2>Operational insights</h2><p class="s3g-muted">Live signals from current incident and engineer data.</p></div></div>
+                            <ul id="operationalInsights" class="s3g-insight-list"></ul>
+                        </section>
+                        <section class="s3g-panel">
+                            <div class="s3g-section-heading"><div><h2>Dispatch recommendation</h2><p class="s3g-muted">Ranks engineers using the existing dispatch model.</p></div></div>
+                            <form id="dispatchForm" class="s3g-stack-form"><label>Incident category<input name="incident_category" placeholder="e.g. Network"></label><label>Required skills (comma separated)<input name="required_skills" placeholder="e.g. network, linux"></label><button class="s3g-primary-button" type="submit">Find best engineer</button></form>
+                            <div id="dispatchResult" class="s3g-dispatch-result" hidden></div>
+                        </section>
+                    </div>
+                    <div class="s3g-panel s3g-table-panel">
+                        <div class="s3g-section-heading"><h2>Engineer workload</h2></div>
+                        <div class="s3g-table-scroll"><table class="s3g-table"><thead><tr><th>Engineer</th><th>Workload</th><th>Assigned</th><th>Availability</th></tr></thead><tbody id="workloadTable"></tbody></table></div>
+                        <p id="workloadEmpty" class="s3g-empty" hidden>No engineer profiles are configured.</p>
+                    </div>
+                </section>
+                <section class="s3g-panel s3g-table-panel">
+                    <div class="s3g-section-heading"><div><h2>Recent SLA predictions</h2><p class="s3g-muted">Prediction history is visible to supervisors for oversight.</p></div></div>
+                    <div class="s3g-table-scroll"><table class="s3g-table"><thead><tr><th>Created</th><th>Incident profile</th><th>Breach probability</th><th>Risk</th></tr></thead><tbody id="predictionHistory"></tbody></table></div>
+                    <p id="predictionEmpty" class="s3g-empty" hidden>No SLA predictions have been recorded yet.</p>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <div id="legacyApp" hidden>
+
     <div class="sidebar">
 
         <h2>S³G</h2>
 
-        <ul>
-            <li>Dashboard</li>
-            <li>Tickets</li>
-            <li>Analytics</li>
-            <li>Engineers</li>
-        </ul>
+<ul>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#tickets">Tickets</a></li>
+    <li><a href="#analytics">Analytics</a></li>
+    <li><a href="#engineers">Engineers</a></li>
+</ul>
 
     </div>
 
@@ -43,7 +171,9 @@
 
         <!-- KPI CARDS -->
 
-        <div class="cards">
+        <section id="dashboard" class="dashboard-section">
+            
+          <div class="cards">
            
              <div class="card">
 
@@ -78,7 +208,171 @@
 
         <!-- CREATE TICKET -->
 
-       <div class="ticket-form">
+     
+        <!-- SLA PREDICTION -->
+
+        <section class="prediction-panel" aria-labelledby="predictionTitle">
+            <div class="prediction-heading">
+                <div>
+                    <h2 id="predictionTitle">SLA Breach Risk Prediction</h2>
+                    <p>Assess an incident before dispatching it to an engineer.</p>
+                </div>
+                <span class="synthetic-label">Synthetic-data model</span>
+            </div>
+
+            <form id="predictionForm" class="prediction-form">
+                <label>Priority
+                    <select name="priority" required>
+                        <option value="LOW">LOW</option>
+                        <option value="AMBER">MODERATE</option>
+                        <option value="HIGH" selected>HIGH</option>
+                    </select>
+                </label>
+                <label>Category
+                    <input name="category" type="text" value="Network" required>
+                </label>
+                <label>Complexity (1–10)
+                    <input name="complexity" type="number" min="1" max="10" step="1" value="8" required>
+                </label>
+                <label>Engineer experience (years)
+                    <input name="engineer_experience" type="number" min="0" step="0.5" value="2" required>
+                </label>
+                <label>Engineer workload
+                    <input name="engineer_workload" type="number" min="0" step="1" value="12" required>
+                </label>
+                <label>Previous incidents
+                    <input name="previous_incidents" type="number" min="0" step="1" value="4" required>
+                </label>
+                <label>SLA allowed (hours)
+                    <input name="sla_allowed_hours" type="number" min="0" step="0.5" value="8" required>
+                </label>
+                <label>Incident age (hours)
+                    <input name="incident_age_hours" type="number" min="0" step="0.5" value="6" required>
+                </label>
+                <label>SLA remaining (hours)
+                    <input name="sla_remaining_hours" type="number" min="0" step="0.5" value="2" required>
+                </label>
+                <button type="submit">Predict SLA risk</button>
+            </form>
+
+            <div id="predictionResult" class="prediction-result" aria-live="polite" hidden></div>
+            <p class="prediction-note">Performance is based on synthetic IT incident data; validate against production data before operational use.</p>
+        </section>
+
+        <section class="prediction-history" aria-labelledby="predictionHistoryTitle">
+            <div class="prediction-heading">
+                <div>
+                    <h2 id="predictionHistoryTitle">Recent Prediction History</h2>
+                    <p>Latest recorded model decisions.</p>
+                </div>
+                <button id="refreshPredictionHistory" class="history-refresh" type="button">Refresh</button>
+            </div>
+            <p id="predictionHistoryEmpty" class="prediction-note">No predictions recorded yet.</p>
+            <div class="history-table-wrapper">
+                <table id="predictionHistoryTable" hidden>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Incident</th>
+                            <th>Probability</th>
+                            <th>Risk</th>
+                            <th>Model version</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictionHistoryBody"></tbody>
+                </table>
+            </div>
+        </section>
+<div class="action-bar">
+
+    <button
+        onclick="processSLA()"
+        class="sla-btn"
+    >
+        Process SLA Countdown
+    </button>
+
+</div>
+
+ <!-- API STATUS -->
+
+        <div class="api-status">
+
+            <span id="apiIndicator">
+                🟢 API Online
+            </span>
+
+            <span id="lastUpdated">
+                Last Updated: --
+            </span>
+
+        </div>
+
+        <!-- RECENT ACTIVITY -->
+
+        <div class="activity-panel">
+
+            <h3>Recent Activity</h3>
+
+            <ul id="activityList">
+
+                <li>System Started</li>
+
+            </ul>
+
+        </div>
+
+</section>
+
+        <!-- CHARTS -->
+
+        <section id="analytics" class="analytics-section">
+
+                <div class="charts-wrapper">
+
+            <div class="chart-container">
+
+                <canvas id="ticketChart"></canvas>
+
+            </div>
+
+            <div class="chart-container">
+
+                <canvas id="riskPieChart"></canvas>
+
+            </div>
+
+        </div>
+</section>
+        <section class="engineers-panel" id="engineers">
+    <h2>Engineer Overview</h2>
+
+    <div class="chart-container">
+        <canvas id="engineerChart"></canvas>
+    </div>
+
+    <h2>Engineer Details</h2>
+
+    <div class="engineer-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Workload</th>
+                    <th>Availability</th>
+                    <th>Skills</th>
+                </tr>
+            </thead>
+            <tbody id="engineerBody"></tbody>
+        </table>
+    </div>
+</section>
+
+       
+
+<!-- TICKETS SECTION -->
+<section id="tickets" class="tickets-section">
+  <div class="ticket-form">
 
     <h3>Create New Ticket</h3>
 
@@ -109,69 +403,11 @@
     </button>
 
 </div>
-<div class="action-bar">
 
-    <button
-        onclick="processSLA()"
-        class="sla-btn"
-    >
-        Process SLA Countdown
-    </button>
-
-</div>
-
-        <!-- CHARTS -->
-
-        <div class="charts-wrapper">
-
-            <div class="chart-container">
-
-                <canvas id="ticketChart"></canvas>
-
-            </div>
-
-            <div class="chart-container">
-
-                <canvas id="riskPieChart"></canvas>
-
-            </div>
-
-        </div>
-        <div class="chart-container">
-              <canvas id="engineerChart"></canvas>
-        </div>
-
-        <!-- API STATUS -->
-
-        <div class="api-status">
-
-            <span id="apiIndicator">
-                🟢 API Online
-            </span>
-
-            <span id="lastUpdated">
-                Last Updated: --
-            </span>
-
-        </div>
-
-        <!-- RECENT ACTIVITY -->
-
-        <div class="activity-panel">
-
-            <h3>Recent Activity</h3>
-
-            <ul id="activityList">
-
-                <li>System Started</li>
-
-            </ul>
-
-        </div>
 
         <!-- INCIDENT TABLE -->
 
-        <div class="ticket-table">
+       <div class="ticket-table">
 
             <h2>Recent Incidents</h2>
 
@@ -204,10 +440,12 @@
             </table>
 
         </div>
+      </section>
 
     </div>
 
-    <script src="app.js"></script>
+    </div>
+    <script src="role-app.js"></script>
 
 </body>
 

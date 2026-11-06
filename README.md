@@ -1,218 +1,336 @@
-![CI](https://github.com/Asante071/s3g-smart-dispatch-system/actions/workflows/ci.yml/badge.svg)
-
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-![Python](https://img.shields.io/badge/Python-3.14-blue)
-
-![FastAPI](https://img.shields.io/badge/FastAPI-Framework-green)
-
-![Tests](https://img.shields.io/badge/Tests-Pytest-success)
-
 # S³G Smart Dispatch System
 
-## Intelligent IT Service Management Platform
+**AI-assisted SLA risk prediction and intelligent IT incident dispatch**
 
-The S³G Smart Dispatch System is an intelligent IT Service Management (ITSM) platform designed to improve incident management, SLA monitoring, and engineer dispatching within enterprise support environments.
+The S³G Smart Dispatch System is a prototype IT service management platform designed to support incident handling, predict potential SLA breaches, and recommend suitable field service engineers.
 
-The platform centralizes ticket management processes while providing a foundation for automated dispatching, SLA tracking, workflow management, and operational analytics.
+It combines a FastAPI backend, a browser-based role-specific interface, PostgreSQL persistence, machine-learning-based SLA prediction, and weighted engineer-dispatch recommendations.
 
-## Key Features
+> **Project status:** Academic prototype. The system has been tested locally. It has not been validated in a live enterprise service-desk environment.
 
-- Ticket Management
-- SLA Monitoring and Tracking
-- Intelligent Dispatch Workflows
-- REST API Development using FastAPI
-- Automated Testing with Pytest
-- Continuous Integration using GitHub Actions
-- Open Source Collaboration Support
-- Agile Development Workflow
+## 1. Key Features
 
-## Project Status
+### Role-based portals
 
-**Version:** v1.0.0
+The application provides three role-specific interfaces:
 
-**Status:** Active Development
+- **Employee:** Submit incidents and view personal ticket records.
+- **Technician:** View assigned incidents, update ticket statuses, and access SLA predictions for assigned incidents.
+- **Supervisor:** Monitor incidents, view operational dashboards, assign engineers, access prediction history, and request dispatch recommendations.
 
-### Current Capabilities
+Access to protected operations is controlled by role-based authorization.
 
-- Ticket CRUD Operations
-- Repository Pattern Implementation
-- Service Layer Architecture
-- FastAPI REST Endpoints
-- Automated Unit Testing
-- CI/CD Pipeline Automation
-- GitHub Collaboration Workflow
+### SLA breach prediction
 
+The system uses a Random Forest classification model to estimate the probability that an incident will breach its service-level agreement.
 
-## Technology Stack
+The model uses nine input features:
 
-### Frontend
-- HTML
-- CSS
-- JavaScript
-- Chart.js
+1. Priority
+2. Incident category
+3. Complexity
+4. Engineer experience
+5. Engineer workload
+6. Previous incidents
+7. Allowed SLA hours
+8. Incident age
+9. Remaining SLA hours
 
-### Backend
-- Python
-- FastAPI
+The model was trained and evaluated using a synthetic dataset of 5,000 incident records.
 
-### Testing
-- Pytest
+**Reported holdout evaluation results:**
 
-### DevOps
-- GitHub Actions
+| Metric | Result |
+|---|---:|
+| Accuracy | 94.10% |
+| Precision | 97.23% |
+| Recall | 94.33% |
+| F1-score | 95.76% |
 
-### Version Control
-- Git & GitHub
+These results represent performance on a synthetic holdout dataset. They should not be interpreted as demonstrated performance on real operational incidents.
 
-### Documentation
-- Markdown
+### Intelligent dispatch recommendations
 
-### Data
-- JSON ticket simulation
+The dispatch service ranks eligible engineers using a weighted scoring approach:
 
-## System Design Documentation
+| Criterion | Weight |
+|---|---:|
+| Technical expertise | 35% |
+| Current workload | 25% |
+| Historical SLA success | 15% |
+| Geographical proximity | 15% |
+| Real-time availability | 5% |
+| Estimated travel time | 5% |
 
-- [System Specification](docs/SPECIFICATION.md)
-- [System Architecture](docs/ARCHITECTURE.md)
-- [Domain Model](docs/DOMAIN_MODEL.md)
-- [Class Diagram](docs/CLASS_DIAGRAM.md)
-- [State Diagrams](docs/STATE_DIAGRAMS.md)
-- [Activity Diagrams](docs/ACTIVITY_DIAGRAMS.md)
+Engineer availability is used as an eligibility condition. The scoring service can adjust the active criteria when information is unavailable.
 
+Geographical proximity is calculated using the Haversine distance formula. The routing service can request driving distance and duration from the public OSRM demonstration service.
 
- ## Implementation
- 
-Language: Python
- 
-Contents:
-- /src → Class implementations
-- /creational_patterns → Design patterns
-- /tests → Unit tests
- 
-Design Choices:
-- Singleton used for database
-- Builder used for flexible object creation
-- Factory used for object instantiation
+The recommendation output includes ranking information and score explanations. Results depend on the information available for each engineer and incident.
 
-## Repository Layer
+### Operational dashboard
 
-The system implements a persistence layer using the Repository Pattern to separate business logic from data access concerns.
+The supervisor portal includes operational indicators and Chart.js visualizations for:
 
-### Features
-- Generic CRUD repository interface
-- In-memory repository implementation
-- Repository Factory for abstraction
-- Future-ready database repository stub
-- Unit tests for CRUD operations
+- Incident priority
+- Incident status
+- SLA risk
+- Engineer workload
+- Prediction history
+- Dispatch and incident oversight
 
-### Testing
-All repository tests were successfully executed using pytest.
+Dashboard figures reflect the current local application data and are not independently verified enterprise performance measures.
 
-### Design Decisions
-- Factory Pattern used for storage abstraction
-- Repository Pattern separates persistence from business logic
-- In-memory storage used for fast testing and flexibility
+## 2. Technology Stack
 
-## Service Layer & REST API
+| Layer | Technology |
+|---|---|
+| Backend | Python, FastAPI |
+| Application server | Uvicorn |
+| Frontend | HTML, CSS, JavaScript |
+| Charts | Chart.js |
+| Database | PostgreSQL |
+| ORM | SQLAlchemy |
+| Database driver | Psycopg |
+| Machine learning | Scikit-learn |
+| Data processing | Pandas, NumPy |
+| Model persistence | Joblib |
+| Testing | Pytest, HTTPX |
+| Configuration | python-dotenv |
 
-### API Endpoints
+## 3. Architecture and Project Structure
 
-| Method | Endpoint | Description |
-|----------|----------|----------|
-| GET | /api/tickets | Retrieve all tickets |
-| GET | /api/tickets/{id} | Retrieve a specific ticket |
-| POST | /api/tickets | Create a new ticket |
+The application separates API handling, business logic, persistence, machine-learning functionality, and frontend presentation.
 
-### Features
-- Service layer implementation
-- REST API using FastAPI
-- Swagger/OpenAPI documentation
-- Ticket API endpoints
-- Unit and API tests
-
-### Endpoints
-
-GET /api/tickets
-
-GET /api/tickets/{ticket_id}
-
-POST /api/tickets
-
-### Testing
-
-All tests executed successfully:
-
-7 passed
-
-## Running the Project
-
-### Clone Repository
-
-```bash
-git clone https://github.com/Asante071/s3g-smart-dispatch-system.git
+```text
+s3g-smart-dispatch-system/
+â”‚
+â”œâ”€â”€ api/
+â”‚   â””â”€â”€ app.py
+â”‚
+â”œâ”€â”€ frontend/
+â”‚   â”œâ”€â”€ index.html
+â”‚   â”œâ”€â”€ app.js
+â”‚   â”œâ”€â”€ role-app.js
+â”‚   â”œâ”€â”€ style.css
+â”‚   â””â”€â”€ role-style.css
+â”‚
+â”œâ”€â”€ ml/
+â”‚   â”œâ”€â”€ model.py
+â”‚   â”œâ”€â”€ artifacts/
+â”‚   â””â”€â”€ ...
+â”‚
+â”œâ”€â”€ services/
+â”‚   â”œâ”€â”€ auth_service.py
+â”‚   â”œâ”€â”€ dispatch_recommendation_service.py
+â”‚   â”œâ”€â”€ engineer_management_service.py
+â”‚   â”œâ”€â”€ routing_service.py
+â”‚   â””â”€â”€ sla_prediction_service.py
+â”‚
+â”œâ”€â”€ repositories/
+â”‚   â”œâ”€â”€ database_models.py
+â”‚   â”œâ”€â”€ database_ticket_repository.py
+â”‚   â”œâ”€â”€ database_engineer_repository.py
+â”‚   â””â”€â”€ database_user_repository.py
+â”‚
+â”œâ”€â”€ factories/
+â”‚   â””â”€â”€ repository_factory.py
+â”‚
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ api/
+â”‚   â”œâ”€â”€ services/
+â”‚   â””â”€â”€ ...
+â”‚
+â”œâ”€â”€ data/
+â”œâ”€â”€ database.py
+â”œâ”€â”€ requirements.txt
+â”œâ”€â”€ README.md
+â””â”€â”€ .env
 ```
 
-### Install Dependencies
+The repository also contains additional application and supporting modules not shown in this abbreviated structure.
 
-```bash
+### Persistence
+
+The PostgreSQL implementation uses SQLAlchemy models and repository classes. The database contains the following tables:
+
+- `tickets`
+- `users`
+- `engineers`
+- `completed_assignments`
+- `prediction_audits`
+
+The repository factory supports memory-based or PostgreSQL ticket storage. Engineer and user persistence use PostgreSQL repositories in the current configuration.
+
+## 4. Design Patterns and Engineering Practices
+
+The implementation uses established software design approaches, including:
+
+- **Repository pattern:** Separates data access from application services.
+- **Factory pattern:** Selects repository implementations.
+- **Singleton pattern:** Provides controlled shared-instance behavior where implemented.
+
+Other practices include modular service classes, environment-based configuration, input validation, role-based authorization, and automated tests.
+
+## 5. Requirements
+
+The project uses the pinned dependencies in `requirements.txt`.
+
+Key dependencies include:
+
+```text
+fastapi==0.142.2
+uvicorn==0.54.0
+SQLAlchemy==2.1.5
+psycopg[binary]==3.3.6
+python-dotenv==1.2.4
+pytest==9.1.1
+httpx==0.28.1
+pandas==3.0.6
+numpy==2.5.4
+scikit-learn==1.9.1
+faker==40.43.0
+joblib==1.5.3
+```
+
+Use the requirements file as the authoritative dependency list.
+
+## 6. Installation and Setup
+
+### Prerequisites
+
+- Python 3.14 or a compatible supported Python environment.
+- PostgreSQL database server.
+- Git.
+- PowerShell or another terminal.
+
+### Clone the repository
+
+```powershell
+git clone https://github.com/Asante071/s3g-smart-dispatch-system.git
+cd s3g-smart-dispatch-system
+```
+
+### Create and activate a virtual environment
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### Install dependencies
+
+```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Run Tests
+### Configure environment variables
 
-```bash
-pytest
+Create a `.env` file in the project root. Configure the following variables using your own local PostgreSQL credentials:
+
+```dotenv
+STORAGE_TYPE=POSTGRES
+
+DB_USER=your_database_username
+DB_PASSWORD=your_database_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=s3g_smart_dispatch
+
+AUTH_TOKEN_SECRET=your_long_random_secret
 ```
 
-### Start API
+Do not commit `.env` files or expose database credentials and authentication secrets in screenshots, logs, or source control.
 
-```bash
+The application uses PostgreSQL configuration when `STORAGE_TYPE=POSTGRES`. The database must be available and the configured user must have the necessary permissions.
+
+### Start the application
+
+```powershell
 uvicorn api.app:app --reload
 ```
 
-# Features for Contribution
-
-| Feature Area | Description | Difficulty |
-|---|---|---|
-| API Enhancements | Add additional FastAPI endpoints | Medium |
-| SLA Monitoring | Improve SLA tracking and escalation | Medium |
-| Testing | Expand pytest coverage | Easy |
-| API Response Validation | Add invalid input tests and status code verification | Easy |
-| Documentation | Improve onboarding and setup docs | Easy |
-| Dashboard Analytics | Add SLA charts and metrics | Hard |
-| Notification System | Integrate email or Teams alerts | Medium |
-| Smart Dispatch Logic | Improve intelligent ticket assignment | Hard |
-
-## Project Structure
+Open the local application in your browser:
 
 ```text
-api/                 FastAPI endpoints
-services/            Business logic layer
-repositories/        Repository pattern implementation
-src/                 Core domain models
-tests/               Automated testing
-docs/                UML diagrams and specifications
-.github/workflows/   CI/CD automation
-Screenshots/         Project evidence and screenshots
+http://127.0.0.1:8000
 ```
 
-## Contributing
+The FastAPI API documentation is available at:
 
-Contributions are welcome.
+```text
+http://127.0.0.1:8000/docs
+```
 
-Please review:
+## 7. Running the Tests
 
-- CONTRIBUTING.md
-- ROADMAP.md
-- SECURITY.md
+Run the complete test suite from the project root:
 
-before submitting pull requests.
+```powershell
+pytest -v
+```
+
+### Latest recorded test execution
+
+**Test execution date:** 5 November 2026
+
+| Result | Count |
+|---|---:|
+| Tests collected | 39 |
+| Passed | 39 |
+| Failed | 0 |
+| Warnings | 1 |
+
+The test suite covers API behavior, authorization, SLA prediction, dispatch recommendations, engineer management, ticket services, repository persistence, and design-pattern behavior.
+
+One non-blocking Starlette deprecation warning was reported during the test run. The warning relates to the HTTPX integration used by the test client.
+
+The results describe the recorded local test execution and do not establish production readiness.
+
+## 8. API Capabilities
+
+The FastAPI application provides functionality for:
+
+- Authentication and current-user information.
+- Incident creation, retrieval, assignment, and status updates.
+- Employee, technician, and supervisor dashboard data.
+- SLA breach prediction and prediction history.
+- Engineer profile management.
+- Dispatch recommendations.
+- Completed assignment and engineer performance records.
+
+For the current endpoint definitions and request schemas, consult the running API documentation at `/docs`.
+
+## 9. Limitations and Future Improvements
+
+The current implementation is a working academic prototype. The following limitations should be considered:
+
+- **Synthetic training data:** The reported machine-learning metrics are based on generated incident records. Validation against real service-desk data is still required.
+- **Authentication integration:** The current login mechanism is a simulated company-account workflow. Enterprise single sign-on, Microsoft Entra ID integration, and multi-factor authentication have not been demonstrated.
+- **Routing dependency:** OSRM uses a public demonstration endpoint. Availability, response time, and route accuracy are dependent on the external service.
+- **Dispatch history:** Historical SLA scoring depends on available completed-assignment records. The current local database may not contain sufficient historical records for meaningful operational validation.
+- **Security hardening:** Production deployment requires review of CORS settings, secret management, HTTPS, deployment configuration, and access controls.
+- **External integrations:** Live integration with platforms such as BMC Helix or ServiceNow has not been demonstrated.
+
+Potential future improvements include real operational training data, model monitoring, enterprise identity integration, a production routing provider, broader automated routing tests, and deployment hardening.
+
+## 10. Project Purpose
+
+The project explores how machine learning and decision-support techniques can assist IT service-desk and field-support operations.
+
+Its main objectives are to:
+
+1. Predict potential SLA breaches using incident characteristics.
+2. Recommend suitable engineers using operational and technical criteria.
+3. Provide role-specific incident management interfaces.
+4. Improve visibility into incident status, SLA risk, and engineer workload.
+
+The system demonstrates a prototype implementation of these capabilities. Actual reductions in SLA breaches, penalty costs, or operational expenditure have not yet been established through production evaluation.
 
 ---
 
-## License
+**Repository:** https://github.com/Asante071/s3g-smart-dispatch-system
 
-This project is licensed under the MIT License.
-
-See LICENSE for details.
+**Project:** S³G Smart Dispatch System  
+**Implementation:** Python, FastAPI, PostgreSQL, Scikit-learn, HTML, CSS, JavaScript and Chart.js

@@ -1,5 +1,33 @@
 console.log("APP LOADED");
 
+async function loadEngineers() {
+    try {
+        const response = await fetch(
+            "http://127.0.0.1:8000/api/engineers"
+        );
+
+        if (!response.ok) {
+            throw new Error("Could not load engineers");
+        }
+
+        const engineers = await response.json();
+
+        const engineerBody = document.getElementById("engineerBody");
+
+        engineerBody.innerHTML = engineers.map(engineer => `
+            <tr>
+                <td>${engineer.name}</td>
+                <td>${engineer.workload}</td>
+                <td>${engineer.availability ? "Available" : "Unavailable"}</td>
+                <td>${Array.isArray(engineer.skills) ? engineer.skills.join(", ") : engineer.skills}</td>
+            </tr>
+        `).join("");
+
+    } catch (error) {
+        console.error("Engineer loading error:", error);
+    }
+}
+
 async function loadTickets() {
 
     console.log("LOADING TICKETS");
@@ -458,6 +486,7 @@ setInterval(() => {
     );
 
     loadTickets();
+    loadEngineers();
 
 }, 5000);
 async function createTicket() {
@@ -736,6 +765,99 @@ async function processSLA() {
     }
 
 }
+
+const API_BASE_URL = "http://127.0.0.1:8000/api";
+
+document.getElementById("predictionForm").addEventListener("submit", predictSLARisk);
+document.getElementById("refreshPredictionHistory").addEventListener("click", loadPredictionHistory);
+
+async function predictSLARisk(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const result = document.getElementById("predictionResult");
+    const formData = new FormData(form);
+    const payload = {
+        priority: formData.get("priority"),
+        category: formData.get("category").trim(),
+        complexity: Number(formData.get("complexity")),
+        engineer_experience: Number(formData.get("engineer_experience")),
+        engineer_workload: Number(formData.get("engineer_workload")),
+        previous_incidents: Number(formData.get("previous_incidents")),
+        sla_allowed_hours: Number(formData.get("sla_allowed_hours")),
+        incident_age_hours: Number(formData.get("incident_age_hours")),
+        sla_remaining_hours: Number(formData.get("sla_remaining_hours")),
+    };
+
+    result.hidden = false;
+    result.className = "prediction-result loading";
+    result.textContent = "Calculating SLA breach risk…";
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/predict`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error("The prediction service could not process this incident.");
+        }
+
+        const prediction = await response.json();
+        const isHighRisk = prediction.risk_level === "HIGH RISK";
+        result.className = `prediction-result ${isHighRisk ? "high-risk" : "low-risk"}`;
+        result.innerHTML = `
+            <strong>${prediction.risk_level}</strong>
+            <span>${(prediction.breach_probability * 100).toFixed(2)}% predicted SLA-breach probability</span>
+            <small>High-risk threshold: greater than ${(prediction.high_risk_threshold * 100).toFixed(0)}%</small>
+        `;
+        loadPredictionHistory();
+    } catch (error) {
+        result.className = "prediction-result error";
+        result.textContent = error.message;
+        console.error("SLA prediction error:", error);
+    }
+}
+
+async function loadPredictionHistory() {
+    const table = document.getElementById("predictionHistoryTable");
+    const tableBody = document.getElementById("predictionHistoryBody");
+    const emptyState = document.getElementById("predictionHistoryEmpty");
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/predictions?limit=10`);
+        if (!response.ok) {
+            throw new Error("Prediction history is unavailable.");
+        }
+
+        const predictions = await response.json();
+        table.hidden = predictions.length === 0;
+        emptyState.hidden = predictions.length > 0;
+        tableBody.innerHTML = predictions.map((prediction) => `
+            <tr>
+                <td>${new Date(prediction.created_at).toLocaleString()}</td>
+                <td>${escapeHtml(prediction.priority)} · ${escapeHtml(prediction.category)}</td>
+                <td>${(prediction.breach_probability * 100).toFixed(2)}%</td>
+                <td><span class="${prediction.risk_level === "HIGH RISK" ? "history-high-risk" : "history-low-risk"}">${escapeHtml(prediction.risk_level)}</span></td>
+                <td><code>${escapeHtml(prediction.model_version)}</code></td>
+            </tr>
+        `).join("");
+    } catch (error) {
+        table.hidden = true;
+        emptyState.hidden = false;
+        emptyState.textContent = error.message;
+        console.error("Prediction history error:", error);
+    }
+}
+
+function escapeHtml(value) {
+    const element = document.createElement("div");
+    element.textContent = value;
+    return element.innerHTML;
+}
+
+loadPredictionHistory();
 async function processSLA() {
 
     try {
@@ -759,6 +881,7 @@ async function processSLA() {
         }
 
         loadTickets();
+        loadEngineers();
 
     }
 
